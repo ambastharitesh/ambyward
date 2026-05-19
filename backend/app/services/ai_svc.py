@@ -22,15 +22,23 @@ def _ai() -> AsyncOpenAI:
 PHOTO_PROMPTS = {
     1: (
         "This image is Step 1 of a retail store audit. "
-        "It should clearly show the EXTERIOR of a store — its entrance, storefront, signage, or facade. "
-        "Does this image show a store exterior or entrance? "
-        'Answer with only valid JSON: {"passed": true/false, "reason": "one sentence"}'
+        "It MUST clearly show the entrance, storefront, signage, facade, or interior branding of a WALMART store. "
+        "Look for the Walmart logo, the yellow spark icon, the blue-and-yellow color scheme, "
+        "Walmart-branded signage, or any other visual indicator that unambiguously identifies the store as Walmart. "
+        "REJECT (passed=false) the image if it shows any other retailer such as Kroger, Target, Costco, Sam's Club, "
+        "Trader Joe's, Whole Foods, CVS, Walgreens, etc., or if the store cannot be confidently identified as Walmart. "
+        "Is this image clearly identifiable as a Walmart store? "
+        'Answer with only valid JSON: {"passed": true/false, "reason": "one sentence explaining what was seen"}'
     ),
     2: (
         "This image is Step 2 of a retail store audit. "
-        "It should clearly show a STORE AISLE, product shelf, or retail shelf display with products. "
-        "Does this image show a store aisle or shelf? "
-        'Answer with only valid JSON: {"passed": true/false, "reason": "one sentence"}'
+        "It MUST show a store aisle, product shelf, or retail shelf display that contains MULTIVITAMIN products "
+        "or closely related items (vitamin bottles, multivitamin packaging, gummy vitamins, supplement jars, "
+        "tablets/capsules clearly labeled as multivitamins, or a shelf section dedicated to vitamins/supplements). "
+        "REJECT (passed=false) the image if it shows an aisle of unrelated products (groceries, beverages, snacks, "
+        "household goods, apparel, etc.) with no visible multivitamin or vitamin/supplement products. "
+        "Does this image show a shelf or aisle containing multivitamin or vitamin/supplement products? "
+        'Answer with only valid JSON: {"passed": true/false, "reason": "one sentence explaining what was seen"}'
     ),
 }
 

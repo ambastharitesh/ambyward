@@ -77,7 +77,17 @@ export function startRecording(stream: MediaStream): RecorderHandle {
   };
 }
 
-function getSupportedMimeType(): string {
+/**
+ * Pick the best MediaRecorder MIME type the current browser supports.
+ *
+ * Order:
+ *   1. webm/vp9 (Chrome/Edge/Firefox desktop & Android)
+ *   2. webm/vp8 (broad webm fallback)
+ *   3. webm (any codec the UA chooses)
+ *   4. mp4   (iOS Safari 14.5+ — the only option there)
+ */
+export function getSupportedMimeType(): string {
+  if (typeof MediaRecorder === 'undefined') return '';
   const types = [
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
@@ -85,4 +95,24 @@ function getSupportedMimeType(): string {
     'video/mp4',
   ];
   return types.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
+}
+
+/**
+ * Normalise a MIME type by stripping codec params.
+ *   "video/webm;codecs=vp8,opus" → "video/webm"
+ *   "video/mp4"                  → "video/mp4"
+ */
+export function baseMimeType(mime: string): string {
+  return (mime || '').split(';')[0].trim().toLowerCase() || 'video/webm';
+}
+
+/**
+ * Map a base MIME type to a sensible file extension.
+ *   "video/webm" → "webm"
+ *   "video/mp4"  → "mp4"
+ */
+export function extensionForMime(mime: string): string {
+  const base = baseMimeType(mime);
+  if (base === 'video/mp4') return 'mp4';
+  return 'webm';
 }

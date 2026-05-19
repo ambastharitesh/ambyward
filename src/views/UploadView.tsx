@@ -3,6 +3,7 @@ import { Upload, Wifi } from 'lucide-react';
 import { useApp } from '../router';
 import { uploadStore } from '../lib/uploadStore';
 import { getPhotoUploadUrl, getVideoUploadUrl, uploadToS3, submitProject } from '../lib/api';
+import { baseMimeType } from '../lib/camera';
 
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -54,10 +55,13 @@ export default function UploadView() {
         setProgress(Math.round((completedParts / totalParts) * 100));
       }
 
-      // Upload video
+      // Upload video — use the actual MIME type the browser produced
+      // (Android Chrome → video/webm, iOS Safari → video/mp4). Both the
+      // presigned URL and the PUT must agree on the same Content-Type.
       if (videoBlob) {
-        const { upload_url, key } = await getVideoUploadUrl(projectId);
-        await uploadToS3(upload_url, videoBlob, (p) => onPartProgress(p / 100), 'video/webm');
+        const videoContentType = baseMimeType(videoBlob.type);
+        const { upload_url, key } = await getVideoUploadUrl(projectId, videoContentType);
+        await uploadToS3(upload_url, videoBlob, (p) => onPartProgress(p / 100), videoContentType);
         uploadStore.videoKey = key;
         completedParts++;
         setProgress(Math.round((completedParts / totalParts) * 100));

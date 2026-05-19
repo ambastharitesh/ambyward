@@ -142,9 +142,13 @@ export async function getPhotoUploadUrl(
   });
 }
 
-export async function getVideoUploadUrl(projectId: string): Promise<PresignedResponse> {
+export async function getVideoUploadUrl(
+  projectId: string,
+  contentType = 'video/webm',
+): Promise<PresignedResponse> {
   return request<PresignedResponse>('POST', '/uploads/video-url', {
     project_id: projectId,
+    content_type: contentType,
   });
 }
 

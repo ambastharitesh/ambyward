@@ -73,6 +73,22 @@ async def check_photo(photo_url: str, step: int) -> dict:
 
 # ── Whisper Transcription ─────────────────────────────────
 
+def _detect_video_extension(data: bytes) -> str:
+    """
+    Detect video container format from the first bytes (magic numbers).
+    Whisper picks parser from the filename extension, so we must save the
+    temp file with the right suffix.
+
+    WebM / Matroska: starts with EBML header 1A 45 DF A3
+    MP4 / QuickTime: bytes 4..8 == "ftyp"
+    """
+    if len(data) >= 4 and data[:4] == b"\x1a\x45\xdf\xa3":
+        return ".webm"
+    if len(data) >= 12 and data[4:8] == b"ftyp":
+        return ".mp4"
+    return ".webm"
+
+
 async def transcribe_video(video_url: str) -> str:
     """Download video from a URL and transcribe with Whisper."""
     if not settings.openai_api_key:
@@ -84,7 +100,10 @@ async def transcribe_video(video_url: str) -> str:
             resp.raise_for_status()
             video_bytes = resp.content
 
-        with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
+        # Pick suffix from actual container, not the URL or key naming
+        suffix = _detect_video_extension(video_bytes)
+
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp.write(video_bytes)
             tmp_path = tmp.name
 

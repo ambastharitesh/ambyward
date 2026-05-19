@@ -17,6 +17,9 @@ class PhotoUrlRequest(BaseModel):
 
 class VideoUrlRequest(BaseModel):
     project_id: str
+    # MIME type the client will PUT with. Must match SigV4 signed Content-Type.
+    # Android Chrome → "video/webm", iOS Safari → "video/mp4".
+    content_type: str = "video/webm"
 
 
 class PresignedResponse(BaseModel):
@@ -47,18 +50,27 @@ def get_photo_upload_url(
     return PresignedResponse(upload_url=url, key=key)
 
 
+_ALLOWED_VIDEO_TYPES = {"video/webm", "video/mp4"}
+_EXT_FOR_VIDEO_TYPE = {"video/webm": "webm", "video/mp4": "mp4"}
+
+
 @router.post("/video-url", response_model=PresignedResponse)
 def get_video_upload_url(
     body: VideoUrlRequest,
     user: User = Depends(get_current_user),
 ):
+    ct = (body.content_type or "video/webm").split(";")[0].strip().lower()
+    if ct not in _ALLOWED_VIDEO_TYPES:
+        ct = "video/webm"
+    ext = _EXT_FOR_VIDEO_TYPE[ct]
+
     if not settings.aws_access_key_id:
-        key = _make_key(user.id, body.project_id, "video")
+        key = _make_key(user.id, body.project_id, f"video.{ext}")
         return PresignedResponse(upload_url="mock://no-s3-configured", key=key)
 
-    key = _make_key(user.id, body.project_id, "video")
+    key = _make_key(user.id, body.project_id, f"video.{ext}")
     try:
-        url = presigned_put(key, content_type="video/webm")
+        url = presigned_put(key, content_type=ct)
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
     return PresignedResponse(upload_url=url, key=key)

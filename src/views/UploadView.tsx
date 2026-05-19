@@ -45,7 +45,7 @@ export default function UploadView() {
       for (const photo of photos) {
         try {
           const { upload_url, key } = await getPhotoUploadUrl(projectId, photo.step);
-          await uploadToS3(upload_url, photo.blob, (p) => onPartProgress(p / 100));
+          await uploadToS3(upload_url, photo.blob, (p) => onPartProgress(p / 100), 'image/jpeg');
           photo.key = key;
         } catch (e) {
           console.warn('Photo upload failed, continuing:', e);
@@ -57,7 +57,7 @@ export default function UploadView() {
       // Upload video
       if (videoBlob) {
         const { upload_url, key } = await getVideoUploadUrl(projectId);
-        await uploadToS3(upload_url, videoBlob, (p) => onPartProgress(p / 100));
+        await uploadToS3(upload_url, videoBlob, (p) => onPartProgress(p / 100), 'video/webm');
         uploadStore.videoKey = key;
         completedParts++;
         setProgress(Math.round((completedParts / totalParts) * 100));

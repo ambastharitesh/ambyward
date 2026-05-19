@@ -131,7 +131,11 @@ def submit_project(
 
     part = _get_participation(session, user.id, project_id)
     if not part:
-        raise HTTPException(status_code=400, detail="Accept project before submitting")
+        # Auto-create Participation if the client somehow skipped /accept
+        part = Participation(user_id=user.id, project_id=project_id, status="Accepted")
+        session.add(part)
+        session.commit()
+        session.refresh(part)
 
     part.set_photo_keys(body.photo_keys)
     part.video_key = body.video_key

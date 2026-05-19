@@ -72,14 +72,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   function acceptProject(id: string) {
-    // Optimistic local update
+    // Optimistic local update — UI advances immediately
     setProjects((ps) =>
       ps.map((p) => (p.id === id ? { ...p, status: 'Accepted' } : p))
     );
     setJustAcceptedId(id);
     setCurrentView('projects');
-    // Background sync with backend
-    apiAccept(id).catch(() => { /* ignore — local state is source of truth */ });
+    // Background sync with backend — log errors so we can diagnose
+    apiAccept(id).catch((err) => console.warn('Accept API failed:', err));
   }
 
   function startCamera() {

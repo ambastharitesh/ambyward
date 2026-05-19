@@ -160,9 +160,15 @@ export function uploadToS3(
   presignedUrl: string,
   blob: Blob,
   onProgress?: (pct: number) => void,
-  timeoutMs = 60000,
+  /**
+   * Content-Type to send. This MUST exactly match what the backend signed the URL with
+   * (SigV4 includes Content-Type in SignedHeaders). For photos that's "image/jpeg",
+   * for videos "video/webm". Don't pass blob.type — MediaRecorder produces values like
+   * "video/webm;codecs=vp8,opus" which won't match.
+   */
+  contentType = 'application/octet-stream',
+  timeoutMs = 120000,
 ): Promise<void> {
-  // Mock URLs (no S3 configured) — skip upload silently
   if (presignedUrl.startsWith('mock://')) {
     onProgress?.(100);
     return Promise.resolve();
@@ -182,8 +188,7 @@ export function uploadToS3(
     xhr.addEventListener('timeout', () => reject(new Error(`S3 upload timed out after ${timeoutMs}ms`)));
     xhr.addEventListener('abort', () => reject(new Error('S3 upload aborted')));
     xhr.open('PUT', presignedUrl);
-    // Content-Type MUST match what the presigned URL was signed with (image/jpeg).
-    xhr.setRequestHeader('Content-Type', blob.type || 'image/jpeg');
+    xhr.setRequestHeader('Content-Type', contentType);
     xhr.send(blob);
   });
 }

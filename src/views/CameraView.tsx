@@ -77,7 +77,7 @@ export default function CameraView() {
     setCamState('uploading');
     try {
       const { upload_url, key } = await getPhotoUploadUrl(selectedProjectId, cameraStep);
-      await uploadToS3(upload_url, capturedBlob);
+      await uploadToS3(upload_url, capturedBlob, undefined, 'image/jpeg');
 
       // Store key for later submission
       const existing = uploadStore.photos.find((p) => p.step === cameraStep);

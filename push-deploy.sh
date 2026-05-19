@@ -26,4 +26,4 @@ echo "▶ Triggering EC2 deploy…"
 ssh -i "$EC2_KEY" -o ConnectTimeout=15 "$EC2_USER@$EC2_HOST" \
   "bash ~/ambyward/deploy.sh"
 
-echo "✓ Done — https://length-reaches-struck-edwards.trycloudflare.com/"
+echo "✓ Done — https://q1a.ai"

@@ -18,7 +18,7 @@ def get_current_user(
     if not payload:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-    user = session.exec(select(User).where(User.id == payload["sub"])).first()
+    user = session.exec(select(User).where(User.id == int(payload["sub"]))).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user

@@ -8,8 +8,9 @@ ALGORITHM = "HS256"
 
 def create_token(user_id: int) -> str:
     expire = datetime.now(timezone.utc) + timedelta(hours=settings.jwt_expiry_hours)
+    # JWT spec requires `sub` to be a string — python-jose rejects integer sub on decode.
     return jwt.encode(
-        {"sub": user_id, "exp": expire},
+        {"sub": str(user_id), "exp": expire},
         settings.jwt_secret,
         algorithm=ALGORITHM,
     )

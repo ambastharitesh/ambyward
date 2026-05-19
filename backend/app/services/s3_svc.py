@@ -1,5 +1,6 @@
 """AWS S3 helpers — presigned upload / download URLs."""
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 from ..config import settings
 
@@ -9,11 +10,17 @@ _client = None
 def _get_client():
     global _client
     if _client is None:
+        # Force SigV4 + virtual-hosted addressing so presigned URLs include the
+        # region in the hostname (required for CORS uploads from the browser).
         _client = boto3.client(
             "s3",
             region_name=settings.aws_region,
             aws_access_key_id=settings.aws_access_key_id or None,
             aws_secret_access_key=settings.aws_secret_access_key or None,
+            config=Config(
+                signature_version="s3v4",
+                s3={"addressing_style": "virtual"},
+            ),
         )
     return _client
 

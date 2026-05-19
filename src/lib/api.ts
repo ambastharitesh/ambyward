@@ -160,6 +160,7 @@ export function uploadToS3(
   presignedUrl: string,
   blob: Blob,
   onProgress?: (pct: number) => void,
+  timeoutMs = 60000,
 ): Promise<void> {
   // Mock URLs (no S3 configured) — skip upload silently
   if (presignedUrl.startsWith('mock://')) {
@@ -169,16 +170,20 @@ export function uploadToS3(
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    xhr.timeout = timeoutMs;
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
     });
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`S3 upload failed: ${xhr.status}`));
+      else reject(new Error(`S3 upload failed: HTTP ${xhr.status} — ${xhr.responseText?.slice(0, 200)}`));
     });
-    xhr.addEventListener('error', () => reject(new Error('S3 upload network error')));
+    xhr.addEventListener('error', () => reject(new Error('S3 upload network error (CORS or DNS)')));
+    xhr.addEventListener('timeout', () => reject(new Error(`S3 upload timed out after ${timeoutMs}ms`)));
+    xhr.addEventListener('abort', () => reject(new Error('S3 upload aborted')));
     xhr.open('PUT', presignedUrl);
-    xhr.setRequestHeader('Content-Type', blob.type || 'application/octet-stream');
+    // Content-Type MUST match what the presigned URL was signed with (image/jpeg).
+    xhr.setRequestHeader('Content-Type', blob.type || 'image/jpeg');
     xhr.send(blob);
   });
 }

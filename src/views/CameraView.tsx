@@ -89,11 +89,14 @@ export default function CameraView() {
       }
 
       setCapturedBlob(null);
+      setCamState('viewfinder');
       advanceCameraStep();
     } catch (err) {
       console.error('Photo upload error:', err);
       // Still advance — upload can be retried on submit
       uploadStore.photos.push({ step: cameraStep, blob: capturedBlob, key: `fallback-step${cameraStep}` });
+      setCapturedBlob(null);
+      setCamState('viewfinder');
       advanceCameraStep();
     }
   }

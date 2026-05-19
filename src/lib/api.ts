@@ -31,6 +31,16 @@ export interface PresignedResponse {
   key: string;
 }
 
+export interface PerQuestionResult {
+  id: number;
+  category: string;
+  question: string;
+  answered: boolean;
+  score: number;
+  snippet: string;
+  reason: string;
+}
+
 export interface VerifyResult {
   visual_passed: boolean;
   context_passed: boolean;
@@ -39,6 +49,7 @@ export interface VerifyResult {
   context_score: number;
   context_summary: string;
   context_reason: string;
+  per_question: PerQuestionResult[];
 }
 
 export interface UserOut {

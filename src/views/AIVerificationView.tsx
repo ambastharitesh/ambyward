@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { CheckCircle, Loader2, Sparkles, ShieldCheck, XCircle } from 'lucide-react';
 import { useApp } from '../router';
 import { verifyProject } from '../lib/api';
+import type { PerQuestionResult } from '../lib/api';
 
 type CheckStatus = 'waiting' | 'checking' | 'done' | 'failed';
 
@@ -106,13 +107,22 @@ function CheckRow({ label, sublabel, status, index }: CheckRowProps) {
   );
 }
 
+type ApiSnapshot = {
+  visual_passed: boolean;
+  context_passed: boolean;
+  context_reason?: string;
+  per_question?: PerQuestionResult[];
+};
+
 export default function AIVerificationView() {
   const { navigate, selectedProjectId } = useApp();
   const [visual, setVisual] = useState<CheckStatus>('waiting');
   const [context, setContext] = useState<CheckStatus>('waiting');
   const [complete, setComplete] = useState(false);
   const [overallFailed, setOverallFailed] = useState(false);
-  const apiResultRef = useRef<{ visual_passed: boolean; context_passed: boolean } | null>(null);
+  const [weakQuestions, setWeakQuestions] = useState<PerQuestionResult[]>([]);
+  const [contextReason, setContextReason] = useState('');
+  const apiResultRef = useRef<ApiSnapshot | null>(null);
   const animDoneRef = useRef(false);
 
   // ── Kick off real AI verification in background ──────────
@@ -120,11 +130,15 @@ export default function AIVerificationView() {
     if (!selectedProjectId) return;
     verifyProject(selectedProjectId)
       .then((result) => {
-        apiResultRef.current = result;
+        apiResultRef.current = {
+          visual_passed: result.visual_passed,
+          context_passed: result.context_passed,
+          context_reason: result.context_reason,
+          per_question: result.per_question,
+        };
         maybeFinish();
       })
       .catch(() => {
-        // On API error, treat as passed (graceful degradation for demo)
         apiResultRef.current = { visual_passed: true, context_passed: true };
         maybeFinish();
       });
@@ -143,6 +157,11 @@ export default function AIVerificationView() {
     if (!passed && result) {
       if (!result.visual_passed) setVisual('failed');
       if (!result.context_passed) setContext('failed');
+      if (result.context_reason) setContextReason(result.context_reason);
+      if (result.per_question?.length) {
+        const weak = result.per_question.filter((q) => !q.answered || q.score < 50);
+        setWeakQuestions(weak.slice(0, 5));
+      }
       setOverallFailed(true);
       setComplete(true);
       return;
@@ -252,12 +271,41 @@ export default function AIVerificationView() {
 
         {/* Failure banner */}
         {overallFailed && complete && (
-          <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-5 py-4 flex items-center gap-3">
-            <XCircle className="text-red-400 w-8 h-8 flex-shrink-0" strokeWidth={1.5} />
-            <div>
-              <p className="text-red-300 font-bold text-sm">Verification did not pass</p>
-              <p className="text-white/40 text-xs mt-0.5">Please re-record and try again</p>
+          <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-5 py-4 flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <XCircle className="text-red-400 w-7 h-7 flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+              <div className="min-w-0">
+                <p className="text-red-300 font-bold text-sm">Verification did not pass</p>
+                <p className="text-white/50 text-xs mt-0.5 leading-snug">
+                  {contextReason || 'Please re-record and try again'}
+                </p>
+              </div>
             </div>
+
+            {weakQuestions.length > 0 && (
+              <div className="border-t border-red-500/20 pt-3">
+                <p className="text-red-200/80 text-[10px] font-bold uppercase tracking-wider mb-2">
+                  Questions that need a better answer
+                </p>
+                <ul className="flex flex-col gap-1.5">
+                  {weakQuestions.map((q) => (
+                    <li key={q.id} className="flex items-start gap-2">
+                      <span className="text-red-300/60 text-[10px] font-mono pt-0.5 flex-shrink-0">
+                        Q{q.id}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-white/80 text-xs font-semibold leading-tight">
+                          {q.category}
+                        </p>
+                        <p className="text-white/45 text-[10px] mt-0.5 leading-snug line-clamp-2">
+                          {q.reason || q.question}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -20,6 +20,9 @@ class VerifyResult(BaseModel):
     context_score: int
     context_summary: str
     context_reason: str
+    # Per-question breakdown (9 items) from GPT-4o transcript evaluation.
+    # Each item: {id, category, question, answered, score, snippet, reason}.
+    per_question: list[dict] = []
 
 
 @router.post("/{project_id}", response_model=VerifyResult)
@@ -46,6 +49,7 @@ async def verify_project(
             context_score=90,
             context_summary="No submission record — auto-passed (demo).",
             context_reason="Demo mode",
+            per_question=[],
         )
 
     # ── 1. Visual Integrity — check each photo ────────────
@@ -71,6 +75,7 @@ async def verify_project(
             "passed": True, "score": 90,
             "summary": "Mock pass (no video or S3 configured).",
             "reason": "Demo mode",
+            "per_question": [],
         }
     else:
         video_url = presigned_get(part.video_key)
@@ -98,4 +103,5 @@ async def verify_project(
         context_score=context_result.get("score", 0),
         context_summary=context_result.get("summary", ""),
         context_reason=context_result.get("reason", ""),
+        per_question=context_result.get("per_question", []),
     )

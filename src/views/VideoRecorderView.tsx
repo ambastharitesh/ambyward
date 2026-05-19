@@ -329,25 +329,53 @@ export default function VideoRecorderView() {
           </div>
         </div>
 
-        {/* Question card */}
-        <div className="absolute inset-0 flex items-center justify-center px-5" style={{ paddingTop: 130 }}>
-          <div key={questionKey} className="w-full max-w-sm animate-question-in">
-            <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
-              <div className="bg-primary-main px-4 py-2.5 flex items-center justify-between">
-                <span className="text-primary-light text-[10px] font-bold tracking-[0.12em] uppercase">
+        {/* Question card — anchored top, keeps the center of the frame clear for the participant */}
+        <div className="absolute top-[88px] left-0 right-0 z-10 px-4 pointer-events-none">
+          <div
+            key={questionKey}
+            className="animate-question-in pointer-events-auto relative overflow-hidden rounded-2xl"
+            style={{
+              background:
+                'linear-gradient(135deg, rgba(10,18,14,0.78) 0%, rgba(8,14,11,0.72) 100%)',
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              boxShadow:
+                '0 12px 36px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)',
+            }}
+          >
+            {/* Gold accent stripe on the left */}
+            <span
+              className="absolute left-0 top-0 bottom-0 w-1"
+              style={{ background: 'linear-gradient(to bottom, #C7BC4A, #AFAB23)' }}
+            />
+
+            <div className="pl-4 pr-3.5 py-3">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span
+                  className="text-[10px] font-extrabold tracking-[0.16em] uppercase px-2 py-0.5 rounded-full"
+                  style={{
+                    color: '#E8E2A6',
+                    background: 'rgba(199,188,74,0.14)',
+                    border: '1px solid rgba(199,188,74,0.25)',
+                  }}
+                >
                   {currentQuestion.category}
                 </span>
-                <span className="text-primary-light/60 text-[10px] font-medium">
-                  Question {currentQuestion.id} of {TOTAL_VIDEO_QUESTIONS}
+                <span className="text-white/45 text-[10px] font-mono tabular-nums">
+                  {String(currentQuestion.id).padStart(2, '0')} / {String(TOTAL_VIDEO_QUESTIONS).padStart(2, '0')}
                 </span>
               </div>
-              <div className="px-4 py-4">
-                <p className="text-text-primary font-semibold text-[15px] leading-relaxed">
-                  {currentQuestion.text}
-                </p>
-              </div>
+              <p className="text-white font-semibold text-[15px] leading-snug" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+                {currentQuestion.text}
+              </p>
             </div>
           </div>
+
+          {/* Subtle hint under the card */}
+          <p className="text-white/40 text-[10px] text-center mt-2 font-medium">
+            Speak your answer, then tap {isLastQuestion ? 'Finish Recording' : 'Next Question'}
+          </p>
         </div>
 
         {/* Bottom bar */}

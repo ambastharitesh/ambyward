@@ -65,10 +65,10 @@ export default function DashboardView() {
       {showNotifications && (
         <>
           <div
-            className="absolute inset-0 z-30 bg-black/30"
+            className="fixed inset-0 z-[90] bg-black/30"
             onClick={() => setShowNotifications(false)}
           />
-          <div className="absolute top-20 right-3 z-40 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-badge-pop">
+          <div className="absolute top-20 right-3 z-[100] w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-badge-pop">
             <div className="bg-primary-main px-4 py-3 flex items-center justify-between">
               <p className="text-white font-bold text-sm">Notifications</p>
               <button onClick={() => setShowNotifications(false)} className="text-primary-light">
@@ -94,10 +94,10 @@ export default function DashboardView() {
       {showMenu && (
         <>
           <div
-            className="absolute inset-0 z-30 bg-black/30"
+            className="fixed inset-0 z-[90] bg-black/30"
             onClick={() => setShowMenu(false)}
           />
-          <div className="absolute top-20 right-3 z-40 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-badge-pop">
+          <div className="absolute top-20 right-3 z-[100] w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-badge-pop">
             <button
               onClick={() => { setShowMenu(false); navigate('profile'); }}
               className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 border-b border-gray-50"

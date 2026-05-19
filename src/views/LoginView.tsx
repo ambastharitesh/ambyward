@@ -98,7 +98,7 @@ export default function LoginView() {
                 disabled={loading || !phone.trim()}
                 className="w-full bg-primary-main text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 active:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Get OTP <ArrowRight className="w-4 h-4" /></>}
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</> : <>Get OTP <ArrowRight className="w-4 h-4" /></>}
               </button>
 
               <p className="text-center text-text-secondary text-sm">
@@ -170,7 +170,7 @@ export default function LoginView() {
                 disabled={loading || otp.length !== 6}
                 className="w-full bg-primary-main text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 active:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Login <ArrowRight className="w-4 h-4" /></>}
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying…</> : <>Login <ArrowRight className="w-4 h-4" /></>}
               </button>
 
               <button

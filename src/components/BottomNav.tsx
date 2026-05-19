@@ -46,9 +46,13 @@ export default function BottomNav() {
         );
       })}
 
-      {/* Center floating action button */}
+      {/* Center floating action button — jumps to Projects (browse new) */}
       <div className="flex flex-col items-center -mt-6">
-        <button className="w-14 h-14 rounded-full bg-primary-main shadow-lg flex items-center justify-center active:scale-95 transition-transform">
+        <button
+          onClick={() => navigate('projects')}
+          aria-label="Browse new projects"
+          className="w-14 h-14 rounded-full bg-primary-main shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+        >
           <Plus className="text-white w-7 h-7" strokeWidth={2.5} />
         </button>
         <span className="text-[10px] font-medium text-text-secondary mt-1">New Video</span>

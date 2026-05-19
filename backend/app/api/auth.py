@@ -38,7 +38,9 @@ def request_otp(body: OtpRequest, session: Session = Depends(get_session)):
     # Upsert user so they exist when OTP is verified
     user = session.exec(select(User).where(User.phone == phone)).first()
     if not user:
-        user = User(phone=phone)
+        # Demo mode: seed new users with a starting balance so the dashboard
+        # is not empty on first login.
+        user = User(phone=phone, total_points=32450)
         session.add(user)
         session.commit()
 

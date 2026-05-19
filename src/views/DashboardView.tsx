@@ -1,4 +1,5 @@
-import { Bell, Menu, TrendingUp, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { Bell, Menu, TrendingUp, ChevronRight, X, LogOut, User, Settings, HelpCircle } from 'lucide-react';
 import { STATUS_META } from '../data/projects';
 import type { ProjectStatus } from '../data/projects';
 import ProjectCard from '../components/ProjectCard';
@@ -8,8 +9,16 @@ const OPEN_STATUSES: ProjectStatus[] = ['New', 'Accepted', 'Submitted'];
 
 const SUMMARY_STATUSES: ProjectStatus[] = ['Submitted', 'Accepted', 'New'];
 
+const NOTIFICATIONS = [
+  { id: 1, title: 'New project available', body: 'Whole Foods Beverage Taste Test — 1000 pts', time: '2h' },
+  { id: 2, title: 'Reward credited', body: '+800 pts for Summer Snack Review', time: '1d' },
+  { id: 3, title: 'Project closing soon', body: 'Coffee Brand Survey closes in 3 days', time: '2d' },
+];
+
 export default function DashboardView() {
-  const { projects, totalPoints, openProject, navigate } = useApp();
+  const { projects, totalPoints, openProject, navigate, logout } = useApp();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const statusSummary = SUMMARY_STATUSES.map((status) => ({
     status,
@@ -33,16 +42,93 @@ export default function DashboardView() {
           <p className="text-primary-light text-xs font-medium">Good morning</p>
           <p className="text-white text-base font-semibold leading-tight truncate">Alex Johnson</p>
         </div>
-        <button className="relative p-2.5 rounded-full bg-primary-dark">
+        <button
+          onClick={() => { setShowNotifications((s) => !s); setShowMenu(false); }}
+          className="relative p-2.5 rounded-full bg-primary-dark active:opacity-80 transition-opacity"
+          aria-label="Notifications"
+        >
           <Bell className="text-primary-light w-5 h-5" />
           <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-error flex items-center justify-center px-1">
             <span className="text-white text-[10px] font-bold leading-none">3</span>
           </span>
         </button>
-        <button className="p-2.5 rounded-full bg-primary-dark">
+        <button
+          onClick={() => { setShowMenu((s) => !s); setShowNotifications(false); }}
+          className="p-2.5 rounded-full bg-primary-dark active:opacity-80 transition-opacity"
+          aria-label="Menu"
+        >
           <Menu className="text-primary-light w-5 h-5" />
         </button>
       </header>
+
+      {/* ── Notifications panel ──────────────────────────── */}
+      {showNotifications && (
+        <>
+          <div
+            className="absolute inset-0 z-30 bg-black/30"
+            onClick={() => setShowNotifications(false)}
+          />
+          <div className="absolute top-20 right-3 z-40 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-badge-pop">
+            <div className="bg-primary-main px-4 py-3 flex items-center justify-between">
+              <p className="text-white font-bold text-sm">Notifications</p>
+              <button onClick={() => setShowNotifications(false)} className="text-primary-light">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="max-h-80 overflow-y-auto">
+              {NOTIFICATIONS.map((n) => (
+                <div key={n.id} className="px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-text-primary font-semibold text-sm leading-tight">{n.title}</p>
+                    <span className="text-text-secondary text-[10px] flex-shrink-0">{n.time}</span>
+                  </div>
+                  <p className="text-text-secondary text-xs mt-1">{n.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Menu drawer ──────────────────────────────────── */}
+      {showMenu && (
+        <>
+          <div
+            className="absolute inset-0 z-30 bg-black/30"
+            onClick={() => setShowMenu(false)}
+          />
+          <div className="absolute top-20 right-3 z-40 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-badge-pop">
+            <button
+              onClick={() => { setShowMenu(false); navigate('profile'); }}
+              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 border-b border-gray-50"
+            >
+              <User className="w-4 h-4 text-text-secondary" />
+              <span className="text-text-primary text-sm font-medium">Profile</span>
+            </button>
+            <button
+              onClick={() => { setShowMenu(false); navigate('profile'); }}
+              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 border-b border-gray-50"
+            >
+              <Settings className="w-4 h-4 text-text-secondary" />
+              <span className="text-text-primary text-sm font-medium">Settings</span>
+            </button>
+            <button
+              onClick={() => { setShowMenu(false); navigate('profile'); }}
+              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 border-b border-gray-50"
+            >
+              <HelpCircle className="w-4 h-4 text-text-secondary" />
+              <span className="text-text-primary text-sm font-medium">Help &amp; Support</span>
+            </button>
+            <button
+              onClick={() => { setShowMenu(false); logout(); }}
+              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-red-50"
+            >
+              <LogOut className="w-4 h-4 text-error" />
+              <span className="text-error text-sm font-semibold">Log Out</span>
+            </button>
+          </div>
+        </>
+      )}
 
       {/* ── Points Balance Card ──────────────────────────── */}
       <div className="px-4 mt-4">

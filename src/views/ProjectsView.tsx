@@ -12,10 +12,10 @@ export default function ProjectsView() {
   const { projects, openProject, justAcceptedId, clearJustAccepted } = useApp();
   const [tab, setTab] = useState<Tab>('open');
 
-  // Auto-clear the "Just Accepted" highlight after 4 s
+  // Auto-clear the "Just Accepted" highlight after 6 s
   useEffect(() => {
     if (!justAcceptedId) return;
-    const id = setTimeout(() => clearJustAccepted(), 4000);
+    const id = setTimeout(() => clearJustAccepted(), 6000);
     return () => clearTimeout(id);
   }, [justAcceptedId, clearJustAccepted]);
 

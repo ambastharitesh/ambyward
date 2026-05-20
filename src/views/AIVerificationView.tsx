@@ -6,6 +6,16 @@ import type { PerQuestionResult } from '../lib/api';
 
 type CheckStatus = 'waiting' | 'checking' | 'done' | 'failed';
 
+// Minimum time each row stays in the "checking" state so the animation feels
+// deliberate. Once both this AND the real API have completed, we transition.
+const MIN_CHECK_MS = 1200;
+// Delay before starting the visual check (lets the screen settle in).
+const START_DELAY_MS = 400;
+// Pause between Visual finishing and Context starting.
+const INTER_CHECK_DELAY_MS = 300;
+// Brief pause after Context resolves before showing the banner.
+const POST_CHECK_DELAY_MS = 400;
+
 interface CheckRowProps {
   label: string;
   sublabel: string;
@@ -122,41 +132,81 @@ export default function AIVerificationView() {
   const [overallFailed, setOverallFailed] = useState(false);
   const [weakQuestions, setWeakQuestions] = useState<PerQuestionResult[]>([]);
   const [contextReason, setContextReason] = useState('');
-  const apiResultRef = useRef<ApiSnapshot | null>(null);
-  const animDoneRef = useRef(false);
 
-  // ── Kick off real AI verification in background ──────────
+  // Real AI result from the backend (null until it returns).
+  const [apiResult, setApiResult] = useState<ApiSnapshot | null>(null);
+  // Whether each row's minimum "checking" display time has elapsed.
+  const [visualMinElapsed, setVisualMinElapsed] = useState(false);
+  const [contextMinElapsed, setContextMinElapsed] = useState(false);
+  // Guards to prevent re-running transitions.
+  const visualResolvedRef = useRef(false);
+  const contextResolvedRef = useRef(false);
+  const finishedRef = useRef(false);
+
+  // ── 1. Kick off real AI verification in background ────────
   useEffect(() => {
     if (!selectedProjectId) return;
     verifyProject(selectedProjectId)
       .then((result) => {
-        apiResultRef.current = {
+        setApiResult({
           visual_passed: result.visual_passed,
           context_passed: result.context_passed,
           context_reason: result.context_reason,
           per_question: result.per_question,
-        };
-        maybeFinish();
+        });
       })
       .catch(() => {
-        apiResultRef.current = { visual_passed: true, context_passed: true };
-        maybeFinish();
+        // Network/API blew up — degrade gracefully to a pass so the user isn't stuck.
+        setApiResult({ visual_passed: true, context_passed: true });
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjectId]);
 
-  function maybeFinish() {
-    if (!animDoneRef.current) return; // animation still running — it will call finish() when done
-    finish();
-  }
+  // ── 2. Start Visual "checking" + arm its min-display timer ─
+  useEffect(() => {
+    const tStart = setTimeout(() => setVisual('checking'), START_DELAY_MS);
+    const tMin = setTimeout(() => setVisualMinElapsed(true), START_DELAY_MS + MIN_CHECK_MS);
+    return () => {
+      clearTimeout(tStart);
+      clearTimeout(tMin);
+    };
+  }, []);
 
-  function finish() {
-    const result = apiResultRef.current;
-    const passed = result ? result.visual_passed && result.context_passed : true;
+  // ── 3. Resolve Visual once min-time AND API have both completed ─
+  useEffect(() => {
+    if (visualResolvedRef.current) return;
+    if (!visualMinElapsed || !apiResult) return;
 
-    if (!passed && result) {
-      if (!result.visual_passed) setVisual('failed');
-      if (!result.context_passed) setContext('failed');
+    visualResolvedRef.current = true;
+    setVisual(apiResult.visual_passed ? 'done' : 'failed');
+
+    // Kick off Context after a short beat
+    const tStart = setTimeout(() => setContext('checking'), INTER_CHECK_DELAY_MS);
+    const tMin = setTimeout(() => setContextMinElapsed(true), INTER_CHECK_DELAY_MS + MIN_CHECK_MS);
+    return () => {
+      clearTimeout(tStart);
+      clearTimeout(tMin);
+    };
+  }, [visualMinElapsed, apiResult]);
+
+  // ── 4. Resolve Context once its min-time AND API have completed ─
+  useEffect(() => {
+    if (contextResolvedRef.current) return;
+    if (!contextMinElapsed || !apiResult) return;
+
+    contextResolvedRef.current = true;
+    setContext(apiResult.context_passed ? 'done' : 'failed');
+
+    const t = setTimeout(() => finishWith(apiResult), POST_CHECK_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [contextMinElapsed, apiResult]);
+
+  function finishWith(result: ApiSnapshot) {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+
+    const passed = result.visual_passed && result.context_passed;
+
+    if (!passed) {
       if (result.context_reason) setContextReason(result.context_reason);
       if (result.per_question?.length) {
         const weak = result.per_question.filter((q) => !q.answered || q.score < 50);
@@ -171,35 +221,9 @@ export default function AIVerificationView() {
     setTimeout(() => navigate('reward'), 1800);
   }
 
-  // ── Timed animation sequence ──────────────────────────────
-  useEffect(() => {
-    const ids: ReturnType<typeof setTimeout>[] = [];
-
-    ids.push(setTimeout(() => setVisual('checking'), 400));
-    ids.push(
-      setTimeout(() => {
-        setVisual((prev) => prev === 'failed' ? 'failed' : 'done');
-        ids.push(setTimeout(() => setContext('checking'), 300));
-        ids.push(
-          setTimeout(() => {
-            setContext((prev) => prev === 'failed' ? 'failed' : 'done');
-            ids.push(
-              setTimeout(() => {
-                animDoneRef.current = true;
-                if (apiResultRef.current) {
-                  finish(); // API already returned
-                }
-                // else: API will call maybeFinish() when it returns
-              }, 400)
-            );
-          }, 1500 + 300)
-        );
-      }, 1500)
-    );
-
-    return () => ids.forEach(clearTimeout);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Derived: are we still waiting on the API after the row's min time elapsed?
+  const visualWaitingApi = visual === 'checking' && visualMinElapsed && !apiResult;
+  const contextWaitingApi = context === 'checking' && contextMinElapsed && !apiResult;
 
   return (
     <div
@@ -226,13 +250,21 @@ export default function AIVerificationView() {
         <CheckRow
           index={0}
           label="Visual Integrity"
-          sublabel="Analysing captured photos for clarity & completeness"
+          sublabel={
+            visualWaitingApi
+              ? 'Finalising photo review with AI…'
+              : 'Analysing captured photos for clarity & completeness'
+          }
           status={visual}
         />
         <CheckRow
           index={1}
           label="Context Analysis"
-          sublabel="Evaluating video transcription against campaign brief"
+          sublabel={
+            contextWaitingApi
+              ? 'Finalising video transcript review with AI…'
+              : 'Evaluating video transcription against campaign brief'
+          }
           status={context}
         />
 

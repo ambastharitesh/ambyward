@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronLeft, Zap, ZapOff, CheckCircle, RotateCcw, ArrowRight, CameraOff } from 'lucide-react';
 import { useApp } from '../router';
 import { CAMERA_STEPS, TOTAL_CAMERA_STEPS } from '../data/campaign';
-import { openCameraStream, capturePhotoFromVideo, stopStream } from '../lib/camera';
+import { openPhotoStream, capturePhotoFromVideo, stopStream } from '../lib/camera';
 import { getPhotoUploadUrl, uploadToS3 } from '../lib/api';
 import { uploadStore } from '../lib/uploadStore';
 
@@ -26,7 +26,7 @@ export default function CameraView() {
   const startCamera = useCallback(async () => {
     stopStream(streamRef.current);
     try {
-      const stream = await openCameraStream('environment');
+      const stream = await openPhotoStream('environment');
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;

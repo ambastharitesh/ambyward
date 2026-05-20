@@ -7,14 +7,46 @@ export type FacingMode = 'environment' | 'user';
 
 // ── Camera stream ─────────────────────────────────────────
 
+export interface OpenStreamOptions {
+  facingMode?: FacingMode;
+  audio?: boolean;
+  /** Ideal capture width in pixels. Default 854 (SD 16:9) for smaller uploads. */
+  width?: number;
+  /** Ideal capture height in pixels. Default 480 (SD 16:9) for smaller uploads. */
+  height?: number;
+  /** Ideal frame rate. Lowering to 24 fps shaves more bytes with little perceptual loss. */
+  frameRate?: number;
+}
+
 export async function openCameraStream(
-  facingMode: FacingMode = 'environment',
+  facingOrOpts: FacingMode | OpenStreamOptions = 'environment',
   audio = false,
 ): Promise<MediaStream> {
+  // Backwards-compatible: caller can still pass a plain facing string.
+  const opts: OpenStreamOptions =
+    typeof facingOrOpts === 'string'
+      ? { facingMode: facingOrOpts, audio }
+      : { audio, ...facingOrOpts };
+
   return navigator.mediaDevices.getUserMedia({
-    video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
-    audio,
+    video: {
+      facingMode: opts.facingMode ?? 'environment',
+      width: { ideal: opts.width ?? 854 },
+      height: { ideal: opts.height ?? 480 },
+      frameRate: { ideal: opts.frameRate ?? 24 },
+    },
+    audio: opts.audio ?? false,
   });
+}
+
+/**
+ * Higher-resolution stream for still-photo capture.
+ * Photos compress per-file so we keep them sharp; only video uses the SD profile.
+ */
+export async function openPhotoStream(
+  facingMode: FacingMode = 'environment',
+): Promise<MediaStream> {
+  return openCameraStream({ facingMode, width: 1280, height: 720, frameRate: 30, audio: false });
 }
 
 export function stopStream(stream: MediaStream | null): void {
@@ -50,9 +82,23 @@ export interface RecorderHandle {
   resume: () => void;
 }
 
-export function startRecording(stream: MediaStream): RecorderHandle {
+export interface RecordingOptions {
+  /** Video bitrate in bits/sec. Default 800 Kbps — ~60% smaller than browser defaults, still clean SD. */
+  videoBitsPerSecond?: number;
+  /** Audio bitrate in bits/sec. Default 64 Kbps — plenty for Whisper transcription. */
+  audioBitsPerSecond?: number;
+}
+
+export function startRecording(
+  stream: MediaStream,
+  options: RecordingOptions = {},
+): RecorderHandle {
   const mimeType = getSupportedMimeType();
-  const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+  const recorder = new MediaRecorder(stream, {
+    ...(mimeType ? { mimeType } : {}),
+    videoBitsPerSecond: options.videoBitsPerSecond ?? 800_000,
+    audioBitsPerSecond: options.audioBitsPerSecond ?? 64_000,
+  });
   const chunks: Blob[] = [];
 
   recorder.ondataavailable = (e) => {

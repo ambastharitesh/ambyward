@@ -53,7 +53,10 @@ export default function VideoRecorderView() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<RecorderHandle | null>(null);
-  const facingRef = useRef<'user' | 'environment'>('user');
+  // Default to the REAR camera — the participant is auditing the shelf, not filming themselves.
+  // They can flip to selfie at any time via the toggle.
+  const facingRef = useRef<'user' | 'environment'>('environment');
+  const [facing, setFacing] = useState<'user' | 'environment'>('environment');
 
   const currentQuestion = VIDEO_QUESTIONS[questionIdx];
   const isLastQuestion = questionIdx === TOTAL_VIDEO_QUESTIONS - 1;
@@ -131,7 +134,7 @@ export default function VideoRecorderView() {
   async function flipCamera() {
     const next = facingRef.current === 'user' ? 'environment' : 'user';
     facingRef.current = next;
-    // Restart the recorder so it captures from the new stream
+    setFacing(next);
     if (recorderRef.current) {
       recorderRef.current.stop(); // discard this partial chunk
     }
@@ -265,7 +268,7 @@ export default function VideoRecorderView() {
           autoPlay
           playsInline
           muted
-          style={{ transform: facingRef.current === 'user' ? 'scaleX(-1)' : 'none' }}
+          style={{ transform: facing === 'user' ? 'scaleX(-1)' : 'none' }}
         />
 
         {/* Dark gradient overlay */}
@@ -306,6 +309,7 @@ export default function VideoRecorderView() {
               <button
                 onClick={() => setMicMuted((m) => !m)}
                 className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center"
+                aria-label={micMuted ? 'Unmute microphone' : 'Mute microphone'}
               >
                 {micMuted
                   ? <MicOff className="text-red-400 w-4 h-4" />
@@ -314,9 +318,13 @@ export default function VideoRecorderView() {
               </button>
               <button
                 onClick={flipCamera}
-                className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center"
+                className="flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-black/55 backdrop-blur-sm border border-white/15 active:bg-black/70 transition-colors"
+                aria-label={`Switch to ${facing === 'user' ? 'rear' : 'selfie'} camera`}
               >
-                <FlipHorizontal className="text-white/70 w-4 h-4" />
+                <FlipHorizontal className="text-secondary-light w-3.5 h-3.5" />
+                <span className="text-white text-[10px] font-bold tracking-wide uppercase">
+                  {facing === 'user' ? 'Selfie' : 'Rear'}
+                </span>
               </button>
             </div>
           </div>
@@ -378,10 +386,14 @@ export default function VideoRecorderView() {
           </p>
         </div>
 
-        {/* Bottom bar */}
+        {/* Bottom bar — respects iOS safe area + Android browser chrome */}
         <div
-          className="absolute bottom-0 left-0 right-0 z-10 px-5 pb-10 pt-6"
-          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.50) 65%, transparent 100%)' }}
+          className="absolute bottom-0 left-0 right-0 z-10 px-5 pt-6"
+          style={{
+            background:
+              'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.50) 65%, transparent 100%)',
+            paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+          }}
         >
           {isLastQuestion ? (
             <button

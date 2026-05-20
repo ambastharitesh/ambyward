@@ -7,7 +7,8 @@
 export interface PhotoCapture {
   step: number;
   blob: Blob;
-  key: string;   // S3 key returned by backend (filled after upload)
+  /** S3 key returned by backend (filled after upload). Undefined if upload failed. */
+  key?: string;
 }
 
 interface UploadStore {

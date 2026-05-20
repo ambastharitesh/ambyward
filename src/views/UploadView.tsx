@@ -30,56 +30,72 @@ export default function UploadView() {
   }, []);
 
   async function doUpload() {
-    try {
-      const projectId = selectedProjectId ?? 'unknown';
-      const photos = uploadStore.photos;
-      const videoBlob = uploadStore.videoBlob;
-      const totalParts = photos.length + (videoBlob ? 1 : 0) || 1;
-      let completedParts = 0;
+    const projectId = selectedProjectId ?? 'unknown';
+    const photos = uploadStore.photos;
+    const videoBlob = uploadStore.videoBlob;
+    const totalParts = photos.length + (videoBlob ? 1 : 0) || 1;
+    let completedParts = 0;
 
-      const onPartProgress = (partFraction: number) => {
-        const pct = Math.round(((completedParts + partFraction) / totalParts) * 100);
-        setProgress(Math.min(pct, 99));
-      };
+    const onPartProgress = (partFraction: number) => {
+      const pct = Math.round(((completedParts + partFraction) / totalParts) * 100);
+      setProgress(Math.min(pct, 99));
+    };
 
-      // Upload photos
-      for (const photo of photos) {
-        try {
-          const { upload_url, key } = await getPhotoUploadUrl(projectId, photo.step);
-          await uploadToS3(upload_url, photo.blob, (p) => onPartProgress(p / 100), 'image/jpeg');
-          photo.key = key;
-        } catch (e) {
-          console.warn('Photo upload failed, continuing:', e);
-        }
-        completedParts++;
-        setProgress(Math.round((completedParts / totalParts) * 100));
+    const failures: string[] = [];
+
+    // ── 1. Upload photos ──────────────────────────────────
+    for (const photo of photos) {
+      try {
+        const { upload_url, key } = await getPhotoUploadUrl(projectId, photo.step);
+        await uploadToS3(upload_url, photo.blob, (p) => onPartProgress(p / 100), 'image/jpeg');
+        photo.key = key;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`[upload] photo step ${photo.step} failed:`, msg);
+        failures.push(`Photo ${photo.step}: ${msg}`);
+        photo.key = undefined;
       }
+      completedParts++;
+      setProgress(Math.round((completedParts / totalParts) * 100));
+    }
 
-      // Upload video — use the actual MIME type the browser produced
-      // (Android Chrome → video/webm, iOS Safari → video/mp4). Both the
-      // presigned URL and the PUT must agree on the same Content-Type.
-      if (videoBlob) {
+    // ── 2. Upload video ───────────────────────────────────
+    // Use the actual MIME type the browser produced (Android → video/webm,
+    // iOS → video/mp4). Presigned URL and PUT must agree on Content-Type.
+    if (videoBlob) {
+      try {
         const videoContentType = baseMimeType(videoBlob.type);
         const { upload_url, key } = await getVideoUploadUrl(projectId, videoContentType);
         await uploadToS3(upload_url, videoBlob, (p) => onPartProgress(p / 100), videoContentType);
         uploadStore.videoKey = key;
-        completedParts++;
-        setProgress(Math.round((completedParts / totalParts) * 100));
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error('[upload] video failed:', msg);
+        failures.push(`Video: ${msg}`);
+        uploadStore.videoKey = '';
       }
-
-      // Submit to backend with collected keys
-      const photoKeys = photos.map((p) => p.key).filter(Boolean);
-      await submitProject(projectId, photoKeys, uploadStore.videoKey || '');
-
-      setProgress(100);
-      setDone(true);
-    } catch (err) {
-      console.error('Upload error:', err);
-      // Fallback: simulate completion so the user can continue
-      setError('Upload issue — proceeding to verification.');
-      setProgress(100);
-      setDone(true);
+      completedParts++;
+      setProgress(Math.round((completedParts / totalParts) * 100));
     }
+
+    // ── 3. Submit captured keys to backend ─────────────────
+    const photoKeys = photos.map((p) => p.key).filter((k): k is string => !!k);
+    try {
+      await submitProject(projectId, photoKeys, uploadStore.videoKey || '');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error('[upload] submit failed:', msg);
+      failures.push(`Submit: ${msg}`);
+    }
+
+    // ── 4. Surface failures (still advance — verify will reject empty data) ─
+    if (failures.length) {
+      setError(`Some uploads failed — verification may not pass. (${failures.length} issue${failures.length > 1 ? 's' : ''})`);
+      console.warn('[upload] summary:', failures);
+    }
+
+    setProgress(100);
+    setDone(true);
   }
 
   // Auto-transition after brief pause at 100%

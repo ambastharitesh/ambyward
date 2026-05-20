@@ -93,8 +93,15 @@ export default function CameraView() {
       advanceCameraStep();
     } catch (err) {
       console.error('Photo upload error:', err);
-      // Still advance — upload can be retried on submit
-      uploadStore.photos.push({ step: cameraStep, blob: capturedBlob, key: `fallback-step${cameraStep}` });
+      // Keep the blob locally without a key — UploadView will retry the PUT.
+      // (Don't store a fake key — that would pollute the backend submission.)
+      const existing = uploadStore.photos.find((p) => p.step === cameraStep);
+      if (existing) {
+        existing.blob = capturedBlob;
+        existing.key = undefined;
+      } else {
+        uploadStore.photos.push({ step: cameraStep, blob: capturedBlob });
+      }
       setCapturedBlob(null);
       setCamState('viewfinder');
       advanceCameraStep();
